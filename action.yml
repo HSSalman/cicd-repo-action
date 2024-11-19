@@ -3,11 +3,14 @@ description: "Trigger Sematext Synthetics checks during your CI/CD workflows"
 author: "Sematext"
 
 inputs:
-  monitor_group_id:
+  MONITOR_GROUP_ID:
     description: "The ID of the monitor group to run the checks against (example: 42)"
     required: true
-  region:
+  REGION:
     description: "The region where your Sematext Cloud account is located ('EU' or 'US')"
+    required: true
+  SEMATEXT_API_KEY:
+    description: "Your Sematext Cloud account's API key (visible in Settings -> API)"
     required: true
 
 runs:
@@ -55,7 +58,7 @@ runs:
 
         response=$(curl -s -w "%{http_code}" -o response.json -X POST "$api_url" \
           -H "Content-Type: application/json" \
-          -H "Authorization: apiKey ${{ secrets.SEMATEXT_API_KEY }}" \
+          -H "Authorization: apiKey ${{ env.SEMATEXT_API_KEY }}" \
           -d "$payload")
 
         http_code=$(tail -n1 <<< "$response")
@@ -92,7 +95,7 @@ runs:
           echo -e " \nPolling Sematext... Elapsed time: ${elapsed_time}s"
 
           response=$(curl -s -w "%{http_code}" -o result.txt "$poll_url" \
-            -H "Authorization: apiKey ${{ secrets.SEMATEXT_API_KEY }}")
+            -H "Authorization: apiKey ${{ env.SEMATEXT_API_KEY }}")
 
           status_code=$(tail -n1 <<< "$response")
 
