@@ -24,7 +24,11 @@ runs:
       shell: bash
       run: |
         echo "COMMIT_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
-        echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+        # Fetch all remote branches and identify the branch with this commit
+        git fetch --all
+        BRANCH_NAME=$(git branch --remote --contains $COMMIT_HASH | grep -oE 'origin/[^ ]+' | sed 's|origin/||' | head -n 1)
+        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
     - name: Set Sematext base URL
       id: set_base_url
