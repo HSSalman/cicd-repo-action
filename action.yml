@@ -13,6 +13,17 @@ inputs:
     description: "Your Sematext Cloud account's API key (visible in Settings -> API)"
     required: true
 
+outputs:
+  result:
+    description: "The full result output from the Synthetics check"
+    value: ${{ steps.poll_results.outputs.result }}
+  status:
+    description: "The status of the check (passed/failed)"
+    value: ${{ steps.poll_results.outputs.status }}
+  error:
+    description: "The error message if the check failed"
+    value: ${{ steps.poll_results.outputs.error }}
+
 runs:
   using: composite
   steps:
@@ -106,22 +117,29 @@ runs:
           if [[ "$status_code" == "200" ]]; then
             echo -e " \nRun completed. Result:"
             cat result.txt
-
+            echo "result=$(cat result.txt)" >> $GITHUB_OUTPUT
+            
             first_line=$(head -n 1 result.txt)
             if echo "$first_line" | grep -q "All monitors passed successfully."; then
               echo "Synthetics check passed."
+              echo "status=passed" >> $GITHUB_OUTPUT
               echo "check_result=passed" >> $GITHUB_ENV
               exit 0
             else
               echo "Synthetics check failed."
+              echo "status=failed" >> $GITHUB_OUTPUT
               exit 1
             fi
           elif [[ "$status_code" == "202" ]]; then
             cat result.txt     # Print the current status to see how many monitors are done
             echo "Retrying in ${interval}s..."
           else
-            echo "Unexpected status code when polling for results: $status_code"
+            error=Unexpected status code when polling for results: $status_code
+            echo "$error"
             cat result.txt
+            echo "result=$(cat result.txt)" >> $GITHUB_OUTPUT
+            echo "error=$error" >> $GITHUB_OUTPUT
+            echo "status=failed" >> $GITHUB_OUTPUT
             exit 1
           fi
 
@@ -129,5 +147,9 @@ runs:
           elapsed_time=$((elapsed_time + interval))
         done
 
-        echo "Polling timed out after ${max_poll_duration}s."
+        error=Polling for results timed out after ${max_poll_duration}s.
+        echo "$error"
+        echo "error=$error" >> $GITHUB_OUTPUT
+        echo "status=failed" >> $GITHUB_OUTPUT
+        echo "result=$(cat result.txt)" >> $GITHUB_OUTPUT
         exit 1
