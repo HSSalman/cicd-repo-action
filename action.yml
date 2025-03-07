@@ -117,7 +117,13 @@ runs:
           if [[ "$status_code" == "200" ]]; then
             echo -e " \nRun completed. Result:"
             cat result.txt
-            echo "result=$(cat result.txt)" >> $GITHUB_OUTPUT
+
+            # Properly escape the result content for GitHub Actions output
+            result_content=$(cat result.txt)
+            result_escaped=$(echo "$result_content" | awk '{printf "%s\\n", $0}' | tr -d '\n')
+            echo "result<<EOF" >> $GITHUB_OUTPUT
+            echo "$result_content" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
             
             first_line=$(head -n 1 result.txt)
             if echo "$first_line" | grep -q "All monitors passed successfully."; then
@@ -136,10 +142,15 @@ runs:
           else
             error=Unexpected status code when polling for results: $status_code
             echo "$error"
-            cat result.txt
-            echo "result=$(cat result.txt)" >> $GITHUB_OUTPUT
             echo "error=$error" >> $GITHUB_OUTPUT
             echo "status=failed" >> $GITHUB_OUTPUT
+            cat result.txt
+
+            result_content=$(cat result.txt)
+            echo "result<<EOF" >> $GITHUB_OUTPUT
+            echo "$result_content" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+
             exit 1
           fi
 
@@ -151,5 +162,10 @@ runs:
         echo "$error"
         echo "error=$error" >> $GITHUB_OUTPUT
         echo "status=failed" >> $GITHUB_OUTPUT
-        echo "result=$(cat result.txt)" >> $GITHUB_OUTPUT
+
+        result_content=$(cat result.txt)
+        echo "result<<EOF" >> $GITHUB_OUTPUT
+        echo "$result_content" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
         exit 1
