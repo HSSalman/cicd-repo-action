@@ -128,7 +128,6 @@ runs:
 
             # Properly escape the result content for GitHub Actions output
             result_content=$(cat result.txt)
-            result_escaped=$(echo "$result_content" | awk '{printf "%s\\n", $0}' | tr -d '\n')
             echo "result<<EOF" >> $GITHUB_OUTPUT
             echo "$result_content" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
@@ -148,7 +147,7 @@ runs:
             cat result.txt     # Print the current status to see how many monitors are done
             echo "Retrying in ${interval}s..."
           else
-            error=Unexpected status code when polling for results: $status_code
+            error="Unexpected status code when polling for results: $status_code"
             echo "$error"
             echo "error=$error" >> $GITHUB_OUTPUT
             echo "status=failed" >> $GITHUB_OUTPUT
@@ -166,7 +165,7 @@ runs:
           elapsed_time=$((elapsed_time + interval))
         done
 
-        error=Polling for results timed out after ${max_poll_duration}s.
+        error="Polling for results timed out after ${max_poll_duration}s."
         echo "$error"
         echo "error=$error" >> $GITHUB_OUTPUT
         echo "status=failed" >> $GITHUB_OUTPUT
