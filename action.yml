@@ -165,8 +165,8 @@ runs:
           elapsed_time=$((elapsed_time + interval))
         done
 
-        error="\nPolling for results timed out after ${max_poll_duration}s."
-        echo "$error"
+        error="Polling for results timed out after ${max_poll_duration}s."
+        echo "\n$error"
         echo "error=$error" >> $GITHUB_OUTPUT
         echo "status=failed" >> $GITHUB_OUTPUT
 
