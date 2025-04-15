@@ -40,7 +40,7 @@ runs:
       id: commit_info
       shell: bash
       run: |
-        COMMIT_HASH = ${{ inputs.GIT_COMMIT_HASH }}
+        COMMIT_HASH="${{ inputs.GIT_COMMIT_HASH }}"
         if [[ -n "$COMMIT_HASH" ]]; then
           echo "Using commit hash from input: '$COMMIT_HASH'"
         else
