@@ -9,12 +9,15 @@ inputs:
   REGION:
     description: "The region where your Sematext Cloud account is located ('EU' or 'US')"
     required: true
-  TARGET_URL:
-    description: "The URL to run the Synthetics check against (optional, will use the URL specified in the Sematext Cloud UI if not provided)"
-    required: false
   SEMATEXT_API_KEY:
     description: "Your Sematext Cloud account's API key (visible in Settings -> API)"
     required: true
+  TARGET_URL:
+    description: "The URL to run the Synthetics check against (optional, will use the URL specified in the Sematext Cloud UI if not provided)"
+    required: false
+  GIT_COMMIT_HASH:
+    description: "The commit hash that the Synthetics check will be triggered for (optional and used for repository dispatches which aren't directly linked to a commit, will use the commit hash of the current commit if not provided)"
+    required: false
 
 outputs:
   result:
@@ -37,11 +40,22 @@ runs:
       id: commit_info
       shell: bash
       run: |
-        echo "COMMIT_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+        if [[ -n "${{ inputs.GIT_COMMIT_HASH }}" ]]; then
+          echo "Using provided commit hash: ${{ inputs.GIT_COMMIT_HASH }}"
+          COMMIT_HASH="${{ inputs.GIT_COMMIT_HASH }}"
+        else
+          echo "No GIT_COMMIT_HASH input provided, using the current commit hash on HEAD."
+          COMMIT_HASH=$(git rev-parse HEAD)
+        fi
+        echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
 
-        # Fetch all remote branches and identify the branch with this commit
+        # Fetch all remote branches and identify the branch with this commit, if such a branch exists
         git fetch --all
         BRANCH_NAME=$(git branch --remote --contains $COMMIT_HASH | grep -oE 'origin/[^ ]+' | sed 's|origin/||' | head -n 1)
+        if [[ -z "$BRANCH_NAME" ]]; then
+            echo "Warning: Could not determine branch name for commit hash $COMMIT_HASH. This might happen if the hash was provided manually or is not on a remote branch."
+            BRANCH_NAME="unknown" # Provide a default or handle as needed
+        fi
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
     - name: Set Sematext base URL
