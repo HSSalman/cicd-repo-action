@@ -54,7 +54,7 @@ runs:
         BRANCH_NAME=$(git branch --remote --contains $COMMIT_HASH | grep -oE 'origin/[^ ]+' | sed 's|origin/||' | head -n 1)
         if [[ -z "$BRANCH_NAME" ]]; then
             echo "Warning: Could not determine branch name for commit hash $COMMIT_HASH. This might happen if the hash was provided manually or is not on a remote branch."
-            BRANCH_NAME="unknown" # Provide a default or handle as needed
+            BRANCH_NAME="NOT_FOUND"
         fi
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
