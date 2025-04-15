@@ -40,36 +40,37 @@ runs:
       id: commit_info
       shell: bash
       run: |
-        if [[ -n "${{ inputs.GIT_COMMIT_HASH }}" ]]; then
-          echo "Using provided commit hash: ${{ inputs.GIT_COMMIT_HASH }}"
-          COMMIT_HASH="${{ inputs.GIT_COMMIT_HASH }}"
+        COMMIT_HASH = ${{ inputs.GIT_COMMIT_HASH }}
+        if [[ -n "$COMMIT_HASH" ]]; then
+          echo "Using commit hash from input: '$COMMIT_HASH'"
         else
-          echo "No GIT_COMMIT_HASH input provided, using the current commit hash on HEAD."
           COMMIT_HASH=$(git rev-parse HEAD)
+          echo "No GIT_COMMIT_HASH input provided, using the current commit hash on HEAD: '$COMMIT_HASH'"
         fi
-        echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
 
         # Fetch all remote branches and identify the branch with this commit, if such a branch exists
         git fetch --all
         BRANCH_NAME=$(git branch --remote --contains $COMMIT_HASH | grep -oE 'origin/[^ ]+' | sed 's|origin/||' | head -n 1)
         if [[ -z "$BRANCH_NAME" ]]; then
             echo "Warning: Could not determine branch name for commit hash $COMMIT_HASH. This might happen if the hash was provided manually or is not on a remote branch."
-            BRANCH_NAME="NOT_FOUND"
+            BRANCH_NAME=""
+            COMMIT_HASH=""
         fi
+        echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
     - name: Set Sematext base URL
       id: set_base_url
       shell: bash
       run: |
-        if [[ "${{ env.REGION }}" == "EU" ]]; then
+        if [[ "${{ inputs.REGION }}" == "EU" ]]; then
           #echo "BASE_URL=https://apps.eu.sematext.com/synthetics-api/api" >> $GITHUB_ENV
           # Adjusted for PR env, to test the feature
           echo "BASE_URL=https://pr-6156.apps.test.sematext.com/synthetics-api/api" >> $GITHUB_ENV
-        elif [[ "${{ env.REGION }}" == "US" ]]; then
+        elif [[ "${{ inputs.REGION }}" == "US" ]]; then
           echo "BASE_URL=https://apps.sematext.com/synthetics-api/api" >> $GITHUB_ENV
         else
-          echo "Invalid region: '${{ env.REGION }}'. Region must be 'EU' or 'US'."
+          echo "Invalid region: '${{ inputs.REGION }}'. Region must be 'EU' or 'US'."
           exit 1
         fi
 
@@ -77,17 +78,13 @@ runs:
       id: trigger_check
       shell: bash
       run: |
-        api_url="${{ env.BASE_URL }}/groups/${{ env.MONITOR_GROUP_ID }}/runs/github"
-        deployment_url=${{ github.event.deployment_status.target_url }}
-        if [[ -z "$deployment_url" || "$deployment_url" == "null" ]]; then
-          if [[ -z "$TARGET_URL" ]]; then
-            echo "Deployment URL not found. Running against URL specified in the Sematext Cloud UI."
-          else
-            echo "Running monitor for deployment URL: $TARGET_URL"
-            deployment_url="$TARGET_URL"
-          fi
+        api_url="${{ env.BASE_URL }}/groups/${{ inputs.MONITOR_GROUP_ID }}/runs/github"
+        TARGET_URL = "${{ inputs.TARGET_URL }}""
+        deployment_url=${{ github.event.deployment_status.target_url }}        # Passed in deployment events such as those from Vercel
+        if [[ -z "$TARGET_URL" ]]; then
+          echo "No dynamic TARGET_URL input provided. Attempting to run against the URL specified in the Sematext Cloud UI. If there are monitors with dynamic URLs in the group, the run will error out."
         else
-          echo "Running monitor for deployment URL: $deployment_url"
+          echo "Running monitor for specified input URL: '$TARGET_URL'"
         fi
 
         payload=$(jq -n --arg hash "${{ env.COMMIT_HASH }}" --arg branch "${{ env.BRANCH_NAME }}" --arg url "$deployment_url" \
@@ -95,7 +92,7 @@ runs:
 
         response=$(curl -s -w "%{http_code}" -o response.json -X POST "$api_url" \
           -H "Content-Type: application/json" \
-          -H "Authorization: apiKey ${{ env.SEMATEXT_API_KEY }}" \
+          -H "Authorization: apiKey ${{ inputs.SEMATEXT_API_KEY }}" \
           -d "$payload")
 
         http_code=$(tail -n1 <<< "$response")
@@ -120,7 +117,7 @@ runs:
       id: poll_results
       shell: bash
       run: |
-        poll_url="${{ env.BASE_URL }}/groups/${{ env.MONITOR_GROUP_ID }}/runs/${{ env.run_id }}/github"
+        poll_url="${{ env.BASE_URL }}/groups/${{ inputs.MONITOR_GROUP_ID }}/runs/${{ env.run_id }}/github"
 
         max_poll_duration=120   # Total allowed polling duration in seconds
         interval=10             # Wait time between poll attempts in seconds
@@ -132,7 +129,7 @@ runs:
           echo -e " \nPolling Sematext... Elapsed time: ${elapsed_time}s"
 
           response=$(curl -s -w "%{http_code}" -o result.txt "$poll_url" \
-            -H "Authorization: apiKey ${{ env.SEMATEXT_API_KEY }}")
+            -H "Authorization: apiKey ${{ inputs.SEMATEXT_API_KEY }}")
 
           status_code=$(tail -n1 <<< "$response")
 
