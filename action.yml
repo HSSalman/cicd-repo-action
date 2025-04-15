@@ -79,15 +79,14 @@ runs:
       shell: bash
       run: |
         api_url="${{ env.BASE_URL }}/groups/${{ inputs.MONITOR_GROUP_ID }}/runs/github"
-        TARGET_URL = "${{ inputs.TARGET_URL }}"
-        deployment_url="${{ github.event.deployment_status.target_url }}"        # Passed in deployment events such as those from Vercel
+        TARGET_URL="${{ inputs.TARGET_URL }}"
         if [[ -z "$TARGET_URL" ]]; then
           echo "No dynamic TARGET_URL input provided. Attempting to run against the URL specified in the Sematext Cloud UI. If there are monitors with dynamic URLs in the group, the run will error out."
         else
           echo "Running monitor for specified input URL: '$TARGET_URL'"
         fi
 
-        payload=$(jq -n --arg hash "${{ env.COMMIT_HASH }}" --arg branch "${{ env.BRANCH_NAME }}" --arg url "$deployment_url" \
+        payload=$(jq -n --arg hash "${{ env.COMMIT_HASH }}" --arg branch "${{ env.BRANCH_NAME }}" --arg url "$TARGET_URL" \
           '{commitHash: $hash, branch: $branch, url: $url}')
 
         response=$(curl -s -w "%{http_code}" -o response.json -X POST "$api_url" \
