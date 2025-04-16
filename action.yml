@@ -176,7 +176,7 @@ runs:
         done
 
         error="Polling for results timed out after ${max_poll_duration}s."
-        echo "\n$error"
+        echo -e "\n$error"
         echo "error=$error" >> $GITHUB_OUTPUT
         echo "status=failed" >> $GITHUB_OUTPUT
 
