@@ -29,6 +29,9 @@ outputs:
   error:
     description: "The error message if the check failed"
     value: ${{ steps.poll_results.outputs.error }}
+  group_run_url:
+    description: "The URL of the Group Run in the Sematext Cloud UI"
+    value: ${{ steps.poll_results.outputs.group_run_url }}
 
 runs:
   using: composite
@@ -65,12 +68,18 @@ runs:
       run: |
         if [[ "${{ inputs.REGION }}" == "EU" ]]; then
           #echo "BASE_URL=https://apps.eu.sematext.com/synthetics-api/api" >> $GITHUB_ENV
+          #echo "GROUP_RUN_URL=https://apps.eu.sematext.com" >> $GITHUB_ENV
           # Adjusted for PR env, to test the feature
           echo "BASE_URL=https://pr-6156.apps.test.sematext.com/synthetics-api/api" >> $GITHUB_ENV
+          echo "GROUP_RUN_URL=https://pr-6156.apps.test.sematext.com" >> $GITHUB_ENV
         elif [[ "${{ inputs.REGION }}" == "US" ]]; then
           echo "BASE_URL=https://apps.sematext.com/synthetics-api/api" >> $GITHUB_ENV
+          echo "GROUP_RUN_URL=https://apps.sematext.com" >> $GITHUB_ENV
         else
-          echo "Invalid region: '${{ inputs.REGION }}'. Region must be 'EU' or 'US'."
+          error="Invalid region: '${{ inputs.REGION }}'. Region must be 'EU' or 'US'."
+          echo "$error"
+          echo "error=$error" >> $GITHUB_OUTPUT
+          echo "status=failed" >> $GITHUB_OUTPUT
           exit 1
         fi
 
@@ -96,20 +105,29 @@ runs:
 
         http_code=$(tail -n1 <<< "$response")
         if [[ "$http_code" != "201" ]]; then
-          echo "Failed to trigger Sematext check. HTTP status: $http_code"
+          error="Failed to trigger the Sematext check. HTTP status: $http_code"
+          echo "$error"
+          echo "error=$error" >> $GITHUB_OUTPUT
+          echo "status=failed" >> $GITHUB_OUTPUT
           cat response.json
           exit 1
         fi
 
-        echo "Check triggered successfully. Extracting run ID..."
+        echo "Check triggered successfully. Extracting Group Run ID..."
         run_id=$(jq -r '.data.id' response.json)
+        GROUP_RUN_URL="${{ env.GROUP_RUN_URL }}/ui/synthetics/group/${{ inputs.MONITOR_GROUP_ID }}/runs/$run_id"
+        echo "group_run_url=$GROUP_RUN_URL" >> $GITHUB_OUTPUT
         if [[ -z "$run_id" ]]; then
-          echo "Failed to extract run ID from the response:"
+          error="Failed to extract the Group Run ID after triggering the check, unable to poll for results."
+          echo "$error"
+          echo "error=$error" >> $GITHUB_OUTPUT
+          echo "status=failed" >> $GITHUB_OUTPUT
           cat response.json
           exit 1
         fi
 
-        echo "Run ID: $run_id"
+        echo "Group Run ID: $run_id"
+        echo "Group Run available at: $GROUP_RUN_URL"
         echo "run_id=$run_id" >> $GITHUB_ENV
 
     - name: Poll Sematext for Results
