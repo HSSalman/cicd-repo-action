@@ -25,13 +25,13 @@ outputs:
     value: ${{ steps.poll_results.outputs.result }}
   status:
     description: "The status of the check (passed/failed)"
-    value: ${{ steps.poll_results.outputs.status }}
+    value: ${{ steps.set_base_url.outputs.status || steps.trigger_check.outputs.status || steps.poll_results.outputs.status }}
   error:
     description: "The error message if the check failed"
-    value: ${{ steps.poll_results.outputs.error }}
+    value: ${{ steps.set_base_url.outputs.error || steps.trigger_check.outputs.error || steps.poll_results.outputs.error }}
   group_run_url:
     description: "The URL of the Group Run in the Sematext Cloud UI"
-    value: ${{ steps.poll_results.outputs.group_run_url }}
+    value: ${{ steps.trigger_check.outputs.group_run_url }}
 
 runs:
   using: composite
