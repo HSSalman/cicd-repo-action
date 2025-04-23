@@ -115,7 +115,7 @@ runs:
 
         echo "Check triggered successfully. Extracting Group Run ID..."
         run_id=$(jq -r '.data.id' response.json)
-        GROUP_RUN_URL="${{ env.GROUP_RUN_URL }}/ui/synthetics/group/${{ inputs.MONITOR_GROUP_ID }}/runs/$run_id"
+        GROUP_RUN_URL="${{ env.GROUP_RUN_URL }}/ui/synthetics/groups/${{ inputs.MONITOR_GROUP_ID }}/runs/$run_id"
         echo "group_run_url=$GROUP_RUN_URL" >> $GITHUB_OUTPUT
         if [[ -z "$run_id" ]]; then
           error="Failed to extract the Group Run ID after triggering the check, unable to poll for results."
