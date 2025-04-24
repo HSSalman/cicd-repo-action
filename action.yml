@@ -67,11 +67,8 @@ runs:
       shell: bash
       run: |
         if [[ "${{ inputs.REGION }}" == "EU" ]]; then
-          #echo "BASE_URL=https://apps.eu.sematext.com/synthetics-api/api" >> $GITHUB_ENV
-          #echo "GROUP_RUN_URL=https://apps.eu.sematext.com" >> $GITHUB_ENV
-          # Adjusted for PR env, to test the feature
-          echo "BASE_URL=https://pr-6156.apps.test.sematext.com/synthetics-api/api" >> $GITHUB_ENV
-          echo "GROUP_RUN_URL=https://pr-6156.apps.test.sematext.com" >> $GITHUB_ENV
+          echo "BASE_URL=https://apps.eu.sematext.com/synthetics-api/api" >> $GITHUB_ENV
+          echo "GROUP_RUN_URL=https://apps.eu.sematext.com" >> $GITHUB_ENV
         elif [[ "${{ inputs.REGION }}" == "US" ]]; then
           echo "BASE_URL=https://apps.sematext.com/synthetics-api/api" >> $GITHUB_ENV
           echo "GROUP_RUN_URL=https://apps.sematext.com" >> $GITHUB_ENV
