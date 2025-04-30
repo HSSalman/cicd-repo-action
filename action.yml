@@ -18,6 +18,9 @@ inputs:
   GIT_COMMIT_HASH:
     description: "The commit hash that the Synthetics check will be triggered for (optional and used for repository dispatches which aren't directly linked to a commit, will use the commit hash of the current commit if not provided)"
     required: false
+  USE_HEAD_SHA:
+    description: "Whether to use the HEAD SHA for the Synthetics check (optional, defaults to false)"
+    required: false
 
 outputs:
   result:
@@ -46,18 +49,24 @@ runs:
         COMMIT_HASH="${{ inputs.GIT_COMMIT_HASH }}"
         if [[ -n "$COMMIT_HASH" ]]; then
           echo "Using commit hash from input: '$COMMIT_HASH'"
-        else
+        elif [[ "${{ inputs.USE_HEAD_SHA }}" == "true" ]]; then
           COMMIT_HASH=$(git rev-parse HEAD)
           echo "No GIT_COMMIT_HASH input provided, using the current commit hash on HEAD: '$COMMIT_HASH'"
+        else
+          echo "ERROR: No GIT_COMMIT_HASH input provided and use of HEAD SHA isn't specified, exiting."
+          exit 1
         fi
 
         # Fetch all remote branches and identify the branch with this commit, if such a branch exists
-        git fetch --all
-        BRANCH_NAME=$(git branch --remote --contains $COMMIT_HASH | grep -oE 'origin/[^ ]+' | sed 's|origin/||' | head -n 1)
-        if [[ -z "$BRANCH_NAME" ]]; then
+        if [[ "${{ inputs.USE_HEAD_SHA }}" == "true" ]]; then
+          BRANCH_NAME=${GITHUB_REF_NAME}
+        else
+          git fetch --all
+          BRANCH_NAME=$(git branch --remote --contains $COMMIT_HASH | grep -oE 'origin/[^ ]+' | sed 's|origin/||' | head -n 1)
+          if [[ -z "$BRANCH_NAME" ]]; then
             echo "Warning: Could not determine branch name for commit hash $COMMIT_HASH. This might happen if the hash was provided manually or is not on a remote branch."
             BRANCH_NAME=""
-            COMMIT_HASH=""
+          fi
         fi
         echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
