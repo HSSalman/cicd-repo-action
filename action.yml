@@ -133,7 +133,7 @@ runs:
       run: |
         poll_url="${{ env.BASE_URL }}/groups/${{ inputs.MONITOR_GROUP_ID }}/runs/${{ env.run_id }}/github"
 
-        max_poll_duration=120   # Total allowed polling duration in seconds
+        max_poll_duration=150   # Total allowed polling duration in seconds
         interval=10             # Wait time between poll attempts in seconds
         elapsed_time=0          # Counter for total polling time
 
