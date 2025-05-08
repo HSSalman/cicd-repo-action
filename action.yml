@@ -48,25 +48,21 @@ runs:
       run: |
         COMMIT_HASH="${{ inputs.GIT_COMMIT_HASH }}"
         if [[ -n "$COMMIT_HASH" ]]; then
-          echo "Using commit hash from input: '$COMMIT_HASH'"
+          echo "::notice::Using commit hash from input: '$COMMIT_HASH'"
         elif [[ "${{ inputs.USE_HEAD_SHA }}" == "true" ]]; then
           COMMIT_HASH=$(git rev-parse HEAD)
-          echo "No GIT_COMMIT_HASH input provided, using the current commit hash on HEAD: '$COMMIT_HASH'"
+          echo "::notice::No GIT_COMMIT_HASH input provided, using the current commit hash on HEAD: '$COMMIT_HASH'"
         else
-          echo "ERROR: No GIT_COMMIT_HASH input provided and use of HEAD SHA isn't specified, exiting."
+          echo "::error::No GIT_COMMIT_HASH input provided and use of HEAD SHA isn't specified, exiting."
           exit 1
         fi
 
         # Fetch all remote branches and identify the branch with this commit, if such a branch exists
-        if [[ "${{ inputs.USE_HEAD_SHA }}" == "true" ]]; then
-          BRANCH_NAME=${GITHUB_REF_NAME}
-        else
-          git fetch --all
-          BRANCH_NAME=$(git branch --remote --contains $COMMIT_HASH | grep -oE 'origin/[^ ]+' | sed 's|origin/||' | head -n 1)
-          if [[ -z "$BRANCH_NAME" ]]; then
-            echo "Warning: Could not determine branch name for commit hash $COMMIT_HASH. This might happen if the hash was provided manually or is not on a remote branch."
-            BRANCH_NAME=""
-          fi
+        git fetch --all
+        BRANCH_NAME=$(git branch --remote --contains $COMMIT_HASH | grep -oE 'origin/[^ ]+' | sed 's|origin/||' | head -n 1)
+        if [[ -z "$BRANCH_NAME" ]]; then
+          echo "::error::Could not determine branch name for commit hash $COMMIT_HASH, check if the commit is on a remote branch."
+          exit 1
         fi
         echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
@@ -83,7 +79,7 @@ runs:
           echo "GROUP_RUN_URL=https://apps.sematext.com" >> $GITHUB_ENV
         else
           error="Invalid region: '${{ inputs.REGION }}'. Region must be 'EU' or 'US'."
-          echo "$error"
+          echo "::error::$error"
           echo "error=$error" >> $GITHUB_OUTPUT
           echo "status=failed" >> $GITHUB_OUTPUT
           exit 1
@@ -96,9 +92,9 @@ runs:
         api_url="${{ env.BASE_URL }}/groups/${{ inputs.MONITOR_GROUP_ID }}/runs/github"
         TARGET_URL="${{ inputs.TARGET_URL }}"
         if [[ -z "$TARGET_URL" ]]; then
-          echo "No dynamic TARGET_URL input provided. Attempting to run against the URL specified in the Sematext Cloud UI. If there are monitors with dynamic URLs in the group, the run will error out."
+          echo "::warning::No dynamic TARGET_URL input provided. Attempting to run against the URL specified in the Sematext Cloud UI. If there are monitors with dynamic URLs in the group, the run will error out."
         else
-          echo "Running monitor for specified input URL: '$TARGET_URL'"
+          echo "::notice::Running CI/CD Group for specified input URL: '$TARGET_URL'"
         fi
 
         payload=$(jq -n --arg hash "${{ env.COMMIT_HASH }}" --arg branch "${{ env.BRANCH_NAME }}" --arg url "$TARGET_URL" \
@@ -112,7 +108,7 @@ runs:
         http_code=$(tail -n1 <<< "$response")
         if [[ "$http_code" != "201" ]]; then
           error="Failed to trigger the Sematext check. HTTP status: $http_code"
-          echo "$error"
+          echo "::error::$error"
           echo "error=$error" >> $GITHUB_OUTPUT
           echo "status=failed" >> $GITHUB_OUTPUT
           cat response.json
@@ -125,7 +121,7 @@ runs:
         echo "group_run_url=$GROUP_RUN_URL" >> $GITHUB_OUTPUT
         if [[ -z "$run_id" ]]; then
           error="Failed to extract the Group Run ID after triggering the check, unable to poll for results."
-          echo "$error"
+          echo "::error::$error"
           echo "error=$error" >> $GITHUB_OUTPUT
           echo "status=failed" >> $GITHUB_OUTPUT
           cat response.json
@@ -133,7 +129,7 @@ runs:
         fi
 
         echo "Group Run ID: $run_id"
-        echo "Group Run available at: $GROUP_RUN_URL"
+        echo "::notice::Group Run available at: $GROUP_RUN_URL"
         echo "run_id=$run_id" >> $GITHUB_ENV
 
     - name: Poll Sematext for Results
@@ -168,12 +164,12 @@ runs:
             
             first_line=$(head -n 1 result.txt)
             if echo "$first_line" | grep -q "All monitors passed successfully."; then
-              echo "Synthetics check passed."
+              echo "::notice::Synthetics check passed."
               echo "status=passed" >> $GITHUB_OUTPUT
               echo "check_result=passed" >> $GITHUB_ENV
               exit 0
             else
-              echo "Synthetics check failed."
+              echo "::error::Synthetics check failed."
               echo "status=failed" >> $GITHUB_OUTPUT
               exit 1
             fi
@@ -182,7 +178,7 @@ runs:
             echo "Retrying in ${interval}s..."
           else
             error="Unexpected status code when polling for results: $status_code"
-            echo "$error"
+            echo "::error::$error"
             echo "error=$error" >> $GITHUB_OUTPUT
             echo "status=failed" >> $GITHUB_OUTPUT
             cat result.txt
@@ -200,7 +196,7 @@ runs:
         done
 
         error="Polling for results timed out after ${max_poll_duration}s."
-        echo -e "\n$error"
+        echo -e "\n::error::$error"
         echo "error=$error" >> $GITHUB_OUTPUT
         echo "status=failed" >> $GITHUB_OUTPUT
 
