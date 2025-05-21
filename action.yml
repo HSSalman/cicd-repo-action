@@ -1,10 +1,10 @@
-name: Sematext Synthetics CI/CD Integration
-description: "Trigger Sematext Synthetics checks during your CI/CD workflows"
+name: Sematext Synthetics CI/CD
+description: "Trigger Sematext Synthetics tests during your CI/CD workflows"
 author: "Sematext"
 
 inputs:
   MONITOR_GROUP_ID:
-    description: "The ID of the monitor group to run the checks against (example: 42)"
+    description: "The ID of the monitor group to run the tests against (example: 42)"
     required: true
   REGION:
     description: "The region where your Sematext Cloud account is located ('EU' or 'US')"
@@ -13,24 +13,24 @@ inputs:
     description: "Your Sematext Cloud account's API key (visible in Settings -> API)"
     required: true
   TARGET_URL:
-    description: "The URL to run the Synthetics check against (optional, will use the URL specified in the Sematext Cloud UI if not provided)"
+    description: "The URL to run the Synthetics tests against (optional, will use the URL specified in the Sematext Cloud UI if not provided)"
     required: false
   GIT_COMMIT_HASH:
-    description: "The commit hash that the Synthetics check will be triggered for (optional and used for repository dispatches which aren't directly linked to a commit, will use the commit hash of the current commit if not provided)"
+    description: "The commit hash that the Synthetics tests will be triggered for (optional and used for repository dispatches which aren't directly linked to a commit, will use the commit hash of the current commit if not provided)"
     required: false
   USE_HEAD_SHA:
-    description: "Whether to use the HEAD SHA for the Synthetics check (optional, defaults to false)"
+    description: "Whether to use the HEAD SHA for the Synthetics tests (optional, defaults to false)"
     required: false
 
 outputs:
   result:
-    description: "The full result output from the Synthetics check"
+    description: "The full result output from the Synthetics tests"
     value: ${{ steps.poll_results.outputs.result }}
   status:
-    description: "The status of the check (passed/failed)"
+    description: "The status of the tests (passed/failed)"
     value: ${{ steps.set_base_url.outputs.status || steps.trigger_check.outputs.status || steps.poll_results.outputs.status }}
   error:
-    description: "The error message if the check failed"
+    description: "The error message if the tests failed"
     value: ${{ steps.set_base_url.outputs.error || steps.trigger_check.outputs.error || steps.poll_results.outputs.error }}
   group_run_url:
     description: "The URL of the Group Run in the Sematext Cloud UI"
